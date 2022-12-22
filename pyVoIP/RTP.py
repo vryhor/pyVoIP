@@ -281,7 +281,7 @@ class RTPMessage:
 
         i = 12
         for x in range(self.CC):
-            self.CSRC.append(packet[i : i + 4])
+            self.CSRC.append(packet[i: i + 4])
             i += 4
 
         if self.extension:
@@ -335,10 +335,14 @@ class RTPClient:
         self.outSSRC = random.randint(1000, 65530)
 
     def start(self) -> None:
-        self.sin = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.sout = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.sin.bind((self.inIP, self.inPort))
-        self.sin.setblocking(False)
+        # self.sin = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        # self.sout = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        # self.sin.bind((self.inIP, self.inPort))
+        # self.sin.setblocking(False)
+
+        self.s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.s.bind((self.inIP, self.inPort))
+        self.s.setblocking(False)
 
         r = Timer(0, self.recv)
         r.name = "RTP Receiver"
@@ -349,8 +353,9 @@ class RTPClient:
 
     def stop(self) -> None:
         self.NSD = False
-        self.sin.close()
-        self.sout.close()
+        # self.sin.close()
+        # self.sout.close()
+        self.s.close()
 
     def read(self, length: int = 160, blocking: bool = True) -> bytes:
         if not blocking:
@@ -368,7 +373,8 @@ class RTPClient:
     def recv(self) -> None:
         while self.NSD:
             try:
-                packet = self.sin.recv(8192)
+                # packet = self.sin.recv(8192)
+                packet = self.s.recv(8192)
                 self.parsePacket(packet)
             except BlockingIOError:
                 time.sleep(0.01)
@@ -398,7 +404,8 @@ class RTPClient:
             # debug(payload)
 
             try:
-                self.sout.sendto(packet, (self.outIP, self.outPort))
+                # self.sout.sendto(packet, (self.outIP, self.outPort))
+                self.s.sendto(packet, (self.outIP, self.outPort))
             except OSError:
                 warnings.warn(
                     "RTP Packet failed to send!",
@@ -486,8 +493,8 @@ class RTPClient:
         return self.encode_pcmu(packet)
 
     def encode_pcmu(self, packet: bytes) -> bytes:
-        packet = audioop.bias(packet, 1, -128)
-        packet = audioop.lin2ulaw(packet, 1)
+        # packet = audioop.bias(packet, 1, -128)
+        # packet = audioop.lin2ulaw(packet, 1)
         return packet
 
     def parsePCMA(self, packet: RTPMessage) -> None:
@@ -500,8 +507,9 @@ class RTPClient:
         return self.parse_pcma(packet)
 
     def parse_pcma(self, packet: RTPMessage) -> None:
-        data = audioop.alaw2lin(packet.payload, 1)
-        data = audioop.bias(data, 1, 128)
+        # data = audioop.alaw2lin(packet.payload, 1)
+        # data = audioop.bias(data, 1, 128)
+        data = packet.payload
         self.pmin.write(packet.timestamp, data)
 
     def encodePCMA(self, packet: bytes) -> bytes:

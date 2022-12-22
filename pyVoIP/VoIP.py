@@ -514,7 +514,7 @@ class VoIPPhone:
             callCallback=self.callback,
         )
 
-    def callback(self, request: SIP.SIPMessage) -> None:
+    def callback(self, request: SIP.SIPMessage) -> Optional[str]:
         # debug("Callback: "+request.summary())
         if request.type == pyVoIP.SIP.SIPMessageType.MESSAGE:
             # debug("This is a message")
@@ -522,6 +522,8 @@ class VoIPPhone:
                 self._callback_MSG_Invite(request)
             elif request.method == "BYE":
                 self._callback_MSG_Bye(request)
+            elif request.method == "OPTIONS":
+                return self._callback_MSG_Options(request)
         else:
             if request.status == SIP.SIPStatus.OK:
                 self._callback_RESP_OK(request)
@@ -529,6 +531,14 @@ class VoIPPhone:
                 self._callback_RESP_NotFound(request)
             elif request.status == SIP.SIPStatus.SERVICE_UNAVAILABLE:
                 self._callback_RESP_Unavailable(request)
+
+    def _callback_MSG_Options(self, request: SIP.SIPMessage) -> str:
+        debug("Options recieved")
+        response = self.sip.gen_busy(request)
+        if self.callCallback:
+            response = response.replace("486 Busy Here", "200 OK")
+            # TODO: Remove warning, implement RFC 3264
+        return response
 
     def getStatus(self) -> PhoneStatus:
         warnings.warn(

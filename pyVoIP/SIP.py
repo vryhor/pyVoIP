@@ -895,6 +895,7 @@ class SIPClient:
             ):
                 pass
             else:
+                # print(message.summary())
                 debug(
                     "TODO: Add 500 Error on Receiving SIP Response:\r\n"
                     + message.summary(),
@@ -934,6 +935,13 @@ class SIPClient:
             # TODO: If callCallback is None, the call doesn't exist, 481
             self.callCallback(message)  # type: ignore
             response = self.genOk(message)
+            self.out.sendto(response.encode("utf8"), (self.server, self.port))
+        elif message.method == "OPTIONS":
+            debug("OPTIONS resp")
+            if self.callCallback:
+                response = self.callCallback(message)
+            else:
+                response = self._gen_options_response(message)
             self.out.sendto(response.encode("utf8"), (self.server, self.port))
         else:
             debug("TODO: Add 400 Error on non processable request")
@@ -1474,7 +1482,7 @@ class SIPClient:
             + f"<sip:{self.username}@{self.myIP}:{self.myPort}>\r\n"
         )
         invRequest += f"To: <sip:{number}@{self.server}>\r\n"
-        invRequest += f"From: <sip:{self.username}@{self.myIP}>;tag={tag}\r\n"
+        invRequest += f"From: <sip:{self.username}@{self.server}>;tag={tag}\r\n"
         invRequest += f"Call-ID: {call_id}\r\n"
         invRequest += f"CSeq: {self.inviteCounter.next()} INVITE\r\n"
         invRequest += f"Allow: {(', '.join(pyVoIP.SIPCompatibleMethods))}\r\n"
@@ -1520,6 +1528,7 @@ class SIPClient:
             "Contact: "
             + f"<sip:{self.username}@{self.myIP}:{self.myPort}>\r\n"
         )
+
         byeRequest += f"User-Agent: pyVoIP {pyVoIP.__version__}\r\n"
         byeRequest += f"Allow: {(', '.join(pyVoIP.SIPCompatibleMethods))}\r\n"
         byeRequest += "Content-Length: 0\r\n\r\n"
@@ -1551,6 +1560,9 @@ class SIPClient:
         ackMessage += "Content-Length: 0\r\n\r\n"
 
         return ackMessage
+
+    def _gen_options_response(self, request: SIPMessage) -> str:
+        return self.gen_busy(request)
 
     def _gen_response_via_header(self, request: SIPMessage) -> str:
         via = ""
@@ -1632,6 +1644,9 @@ class SIPClient:
 
     def bye(self, request: SIPMessage) -> None:
         message = self.genBye(request)
+        print("\n\n\nbye message \n")
+        print(message)
+        print("\n\n")
         # TODO: Handle bye to server vs. bye to connected client
         self.out.sendto(message.encode("utf8"), (self.server, self.port))
 
